@@ -109,7 +109,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    uint32_t now = HAL_GetTick();
+    /*uint32_t now = HAL_GetTick();
     float dt = (now - last_time) / 1000.0f;
     last_time = now;
 
@@ -125,7 +125,7 @@ int main(void)
     gy = mpu6050.Gy;
     gz = mpu6050.Gz;
 
-    Mahony_Update(gx, gy, gz, ax, ay, az, dt);
+    Mahony_Update(gx, gy, gz, ax, ay, az, dt);*/
   }
   /* USER CODE END 3 */
 }

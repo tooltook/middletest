@@ -35,7 +35,12 @@ enable_language(C ASM)
 add_executable(${CMAKE_PROJECT_NAME}
         app/Src/mpu6050.c
         app/Inc/mahony.h
-        app/Src/mahony.c)
+        app/Src/mahony.c
+        app/Inc/pid.h
+        app/Src/pid.c
+        app/Inc/servo.h
+        app/Src/servo.c
+)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
