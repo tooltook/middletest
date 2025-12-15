@@ -26,6 +26,8 @@
 /* USER CODE BEGIN Includes */
 #include "../../app/Inc/mpu6050.h"
 #include "mahony.h"
+#include "servo.h"
+#include "pid.h"
 
 /* USER CODE END Includes */
 
@@ -41,15 +43,38 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-MPU6050_t mpu6050;
-float ax=0,ay=0,az=0;
-float gx=0,gy=0,gz=0;
+//MPU6050_t mpu6050;
+//float ax=0,ay=0,az=0;
+//float gx=0,gy=0,gz=0;
 
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+/* IMU */
+MPU6050_t mpu6050;
+
+/* 原始传感器数据（物理单位） */
+float ax, ay, az;
+float gx, gy, gz;
+
+
+/* PID 控制器 */
+PID_t pid_pitch;
+PID_t pid_roll;
+
+/* 目标角度 */
+float pitch_target = 0.0f;
+float roll_target  = 0.0f;
+
+/* PID 输出（角度补偿） */
+float pitch_out = 0.0f;
+float roll_out  = 0.0f;
+
+/* 时间 */
+uint32_t last_tick;
+
 
 /* USER CODE END PV */
 
@@ -97,7 +122,29 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   MPU6050_Init(&hi2c1);
-  uint32_t last_time = 0;
+
+  Servo_Init(&htim2);
+
+  Servo_SetAngle(SERVO_PITCH,90.0f);
+  Servo_SetAngle(SERVO_ROLL, 90.0f);
+  HAL_Delay(500);
+
+  PID_Init(&pid_pitch,
+    3.0f,
+    0.0f,
+    0.0f,
+    10.f,
+    30.0f);
+
+  PID_Init(&pid_roll,
+    3.0f,
+    0.0f,
+    0.0f,
+    10.f,
+    30.0f
+      );
+
+  last_tick=HAL_GetTick();
 
 
   /* USER CODE END 2 */
@@ -109,24 +156,39 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    /*uint32_t now = HAL_GetTick();
-    float dt = (now - last_time) / 1000.0f;
-    last_time = now;
 
-    if (dt <= 0) dt = 0.001f;
 
-    MPU6050_Read_All(&hi2c1,&mpu6050);
+      /* ===== 1. 计算 dt ===== */
+      uint32_t now = HAL_GetTick();
+      float dt = (now - last_tick) * 0.001f;
+      last_tick = now;
+      if (dt <= 0.0f) dt = 0.001f;
 
-    ax = mpu6050.Ax;
-    ay = mpu6050.Ay;
-    az = mpu6050.Az;
+      /* ===== 2. 读取 IMU ===== */
+      MPU6050_Read_All(&hi2c1, &mpu6050);
 
-    gx = mpu6050.Gx;
-    gy = mpu6050.Gy;
-    gz = mpu6050.Gz;
+      ax = mpu6050.Ax;
+      ay = mpu6050.Ay;
+      az = mpu6050.Az;
 
-    Mahony_Update(gx, gy, gz, ax, ay, az, dt);*/
-  }
+      gx = mpu6050.Gx;
+      gy = mpu6050.Gy;
+      gz = mpu6050.Gz;
+
+      /* ===== 3. 姿态解算 ===== */
+      Mahony_Update(gx, gy, gz, ax, ay, az, dt);
+
+
+      /* ===== 4. PID 控制 ===== */
+      pitch_out = PID_Update(&pid_pitch, pitch_target, pitch, dt);
+      roll_out  = PID_Update(&pid_roll,  roll_target,  roll,  dt);
+
+      /* ===== 5. 舵机输出 ===== */
+      Servo_SetAngle(SERVO_PITCH, 90.0f + pitch_out);
+      Servo_SetAngle(SERVO_ROLL,  90.0f + roll_out);
+    }
+
+
   /* USER CODE END 3 */
 }
 

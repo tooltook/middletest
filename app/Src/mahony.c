@@ -1,7 +1,7 @@
 #include "mahony.h"
 
-float twoKp = 2.0f * 0.5f;   // proportional gain
-float twoKi = 2.0f * 0.0f;   // integral gain
+static float twoKp = 2.0f * 0.5f;   // proportional gain
+static float twoKi = 2.0f * 0.0f;   // integral gain
 
 static float q0 = 1.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;     // quaternion
 static float integralFBx = 0, integralFBy = 0, integralFBz = 0;
@@ -12,6 +12,7 @@ void Mahony_Update(float gx, float gy, float gz,
                    float ax, float ay, float az,
                    float dt)
 {
+    if (dt<=0.0f) return;
     float recipNorm;
     float halfvx, halfvy, halfvz;
     float halfex, halfey, halfez;
