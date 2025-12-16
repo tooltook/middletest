@@ -117,14 +117,22 @@ void MPU6050_Read_Temp(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct) {
       (float)((int16_t)temp / (float)340.0 + (float)36.53);
 }
 
-void MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct) {
+HAL_StatusTypeDef MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct) {
   uint8_t Rec_Data[14];
   int16_t temp;
 
   // Read 14 BYTES of data starting from ACCEL_XOUT_H register
 
-  HAL_I2C_Mem_Read(I2Cx, MPU6050_ADDR, ACCEL_XOUT_H_REG, 1, Rec_Data, 14,
-                   i2c_timeout);
+    if(HAL_I2C_Mem_Read(I2Cx,
+                         MPU6050_ADDR,
+                         ACCEL_XOUT_H_REG,
+                         I2C_MEMADD_SIZE_8BIT,
+                         Rec_Data,
+                         14,
+                         i2c_timeout) != HAL_OK)
+   {
+       return HAL_ERROR;
+   }
 
   DataStruct->Accel_X_RAW = (int16_t)(Rec_Data[0] << 8 | Rec_Data[1]);
   DataStruct->Accel_Y_RAW = (int16_t)(Rec_Data[2] << 8 | Rec_Data[3]);
@@ -142,6 +150,8 @@ void MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct) {
   DataStruct->Gx = DataStruct->Gyro_X_RAW / 131.0;
   DataStruct->Gy = DataStruct->Gyro_Y_RAW / 131.0;
   DataStruct->Gz = DataStruct->Gyro_Z_RAW / 131.0;
+
+  return HAL_OK;
 }
 
 

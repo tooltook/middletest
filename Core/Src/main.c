@@ -43,9 +43,6 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-//MPU6050_t mpu6050;
-//float ax=0,ay=0,az=0;
-//float gx=0,gy=0,gz=0;
 
 /* USER CODE END PM */
 
@@ -54,11 +51,8 @@
 /* USER CODE BEGIN PV */
 /* IMU */
 MPU6050_t mpu6050;
-
-/* 原始传感器数据（物理单位） */
-float ax, ay, az;
-float gx, gy, gz;
-
+float ax,ay,az;
+float gx,gy,gz;
 
 /* PID 控制器 */
 PID_t pid_pitch;
@@ -73,7 +67,8 @@ float pitch_out = 0.0f;
 float roll_out  = 0.0f;
 
 /* 时间 */
-uint32_t last_tick;
+static uint8_t i2c_fail_cnt = 0;
+static uint32_t last_ctrl = 0;
 
 
 /* USER CODE END PV */
@@ -144,7 +139,8 @@ int main(void)
     30.0f
       );
 
-  last_tick=HAL_GetTick();
+  uint32_t last=HAL_GetTick();
+  last_ctrl = HAL_GetTick();
 
 
   /* USER CODE END 2 */
@@ -156,36 +152,68 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-
-      /* ===== 1. 计算 dt ===== */
+    if (HAL_GetTick() - last >= 5)   // 200Hz
+    {
       uint32_t now = HAL_GetTick();
-      float dt = (now - last_tick) * 0.001f;
-      last_tick = now;
-      if (dt <= 0.0f) dt = 0.001f;
+      float dt = (float)(now - last) / 1000.0f;
+      last = now;
 
-      /* ===== 2. 读取 IMU ===== */
-      MPU6050_Read_All(&hi2c1, &mpu6050);
+      if (MPU6050_Read_All(&hi2c1, &mpu6050) == HAL_OK)
+      {
+        i2c_fail_cnt = 0;
 
-      ax = mpu6050.Ax;
-      ay = mpu6050.Ay;
-      az = mpu6050.Az;
+        ax = mpu6050.Ax;
+        ay = mpu6050.Ay;
+        az = mpu6050.Az;
 
-      gx = mpu6050.Gx;
-      gy = mpu6050.Gy;
-      gz = mpu6050.Gz;
+        gx = mpu6050.Gx;
+        gy = mpu6050.Gy;
+        gz = mpu6050.Gz;
 
-      /* ===== 3. 姿态解算 ===== */
-      Mahony_Update(gx, gy, gz, ax, ay, az, dt);
+        Mahony_Update(gx, gy, gz,
+                      ax, ay, az,
+                      dt);
 
+      }
+      else
+      {
+        i2c_fail_cnt++;
 
-      /* ===== 4. PID 控制 ===== */
-      pitch_out = PID_Update(&pid_pitch, pitch_target, pitch, dt);
-      roll_out  = PID_Update(&pid_roll,  roll_target,  roll,  dt);
+        if (i2c_fail_cnt >= 3)
+        {
+          HAL_I2C_DeInit(&hi2c1);
+          HAL_Delay(10);
+          MX_I2C1_Init();
+          i2c_fail_cnt = 0;
+          continue;
+        }
+      }
 
-      /* ===== 5. 舵机输出 ===== */
+    }
+
+    /* ================= PID + Servo（100Hz） ================= */
+    if (HAL_GetTick() - last_ctrl >= 10)   // 100Hz
+    {
+      float dt_ctrl = (HAL_GetTick() - last_ctrl) * 0.001f;
+      last_ctrl = HAL_GetTick();
+
+      /* pitch / roll 来自 Mahony 的全局变量 */
+      pitch_out = PID_Update(&pid_pitch,
+                             pitch_target,
+                             pitch,
+                             dt_ctrl);
+
+      roll_out  = PID_Update(&pid_roll,
+                             roll_target,
+                             roll,
+                             dt_ctrl);
+
+      /* 舵机输出（90°为中位） */
       Servo_SetAngle(SERVO_PITCH, 90.0f + pitch_out);
       Servo_SetAngle(SERVO_ROLL,  90.0f + roll_out);
+    }
+
+
     }
 
 
