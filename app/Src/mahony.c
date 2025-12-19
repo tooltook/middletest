@@ -1,5 +1,5 @@
 #include "mahony.h"
-
+//这个算法好使，快用
 static float twoKp = 2.0f * 0.5f;   // proportional gain
 static float twoKi = 2.0f * 0.0f;   // integral gain
 

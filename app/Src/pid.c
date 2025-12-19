@@ -1,4 +1,6 @@
 #include "pid.h"
+//哈哈哈哈哈哈哈哈哈哈哈哈哈没用
+#include <math.h>
 
 /**
  * @brief 初始化 PID 参数
@@ -41,6 +43,7 @@ float PID_Update(PID_t *pid,
         return 0.0f;
 
     float error = target - measure;
+    if (fabsf(error) < 0.7f) error = 0.0f;
 
     /* -------- 积分项 -------- */
     pid->integral += error * dt;

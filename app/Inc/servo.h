@@ -5,7 +5,7 @@
 
 typedef enum {
     SERVO_PITCH = 0,
-    SERVO_ROLL
+    SERVO_YAW = 1,
 } Servo_ID_t;
 
 void Servo_Init(TIM_HandleTypeDef *htim);
